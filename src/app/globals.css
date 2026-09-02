@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    /* Anchor links and "back to top" should glide, but only for people who
+       have not asked otherwise - see the reduced-motion block below. */
+    scroll-behavior: smooth;
+    /* Sticky header height, so an anchored section is not hidden behind it. */
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    @apply bg-paper-100 text-ink-800 antialiased;
+    font-feature-settings: 'kern', 'liga';
+  }
+
+  /* Tabular figures wherever numbers are compared or stacked. A price that
+     changes width when it changes value makes a grid twitch. */
+  .font-data,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A visible, warm focus ring. The browser default is a thin blue outline
+     that all but disappears against warm paper. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-gold-500 ring-offset-2 ring-offset-paper-100;
+  }
+
+  ::selection {
+    @apply bg-gold-200 text-ink-900;
+  }
+}
+
+@layer components {
+  /* Long-form CMS content. The admin writes HTML, so these styles have to
+     apply to bare tags rather than to classes we control. */
+  .prose-shop {
+    @apply max-w-prose text-[1.0625rem] leading-relaxed text-ink-600;
+  }
+  .prose-shop h2 {
+    @apply mb-3 mt-10 font-display text-2xl text-ink-900;
+  }
+  .prose-shop h3 {
+    @apply mb-2 mt-8 font-display text-xl text-ink-900;
+  }
+  .prose-shop p {
+    @apply mb-4;
+  }
+  .prose-shop ul {
+    @apply mb-4 list-disc space-y-1 pl-5;
+  }
+  .prose-shop ol {
+    @apply mb-4 list-decimal space-y-1 pl-5;
+  }
+  .prose-shop a {
+    @apply text-gold-700 underline underline-offset-2 hover:text-gold-800;
+  }
+  .prose-shop strong {
+    @apply font-semibold text-ink-800;
+  }
+  .prose-shop blockquote {
+    @apply my-6 border-l-2 border-gold-300 pl-4 italic text-ink-500;
+  }
+  .prose-shop img {
+    @apply my-6 rounded-lg;
+  }
+
+  .shell {
+    @apply mx-auto w-full max-w-shell px-5 sm:px-8;
+  }
+}
+
+/**
+ * Reduced motion.
+ *
+ * ADR 0014 chose rich, scroll-driven animation. This block is the other half
+ * of that decision, and it is not optional: vestibular disorders are common,
+ * and scroll-linked motion is a real trigger rather than a matter of taste.
+ *
+ * Framer honours the preference for its own transitions via `MotionConfig`,
+ * and hand-rolled scroll effects check `useReducedMotionSafe`. This catches
+ * everything else - CSS transitions, hover lifts, smooth scrolling, and any
+ * animation added later by someone who did not read either of those.
+ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

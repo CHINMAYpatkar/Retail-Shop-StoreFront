@@ -1,0 +1,41 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Next.js build output
+/.next/
+/out/
+next-env.d.ts
+
+# Production
+/build
+
+# Testing
+/coverage
+
+# Environment. `.env.example` IS tracked and holds placeholders only - a new
+# clone needs a template to copy.
+.env
+.env.local
+.env*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local tooling. Neither of the other two repos tracks this, so it stays
+# untracked here too for consistency.
+.claude/
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.pem
+
+# Vercel / TS build info
+.vercel
+*.tsbuildinfo
