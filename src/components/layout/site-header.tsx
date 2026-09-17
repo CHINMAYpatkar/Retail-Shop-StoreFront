@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import { Heart, Search, User } from 'lucide-react';
+import { Heart, Search } from 'lucide-react';
 import type { PublicSettings } from '@/types/api';
 import { AnnouncementBar } from './announcement-bar';
 import { BrandMark } from './brand-mark';
 import { MobileNav } from './mobile-nav';
 import { CartLink } from '@/components/cart/cart-link';
+import { AccountLink } from '@/components/account/account-link';
 
 /**
  * Primary navigation.
@@ -68,9 +69,7 @@ export function SiteHeader({ settings }: { settings: PublicSettings }) {
             <HeaderIcon href="/account/wishlist" label="Wishlist" className="hidden sm:inline-flex">
               <Heart className="h-[18px] w-[18px]" />
             </HeaderIcon>
-            <HeaderIcon href="/account" label="Account" className="hidden sm:inline-flex">
-              <User className="h-[18px] w-[18px]" />
-            </HeaderIcon>
+            <AccountLink className="hidden sm:inline-flex" />
             <CartLink />
           </div>
         </div>

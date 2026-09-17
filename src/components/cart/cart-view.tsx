@@ -7,6 +7,8 @@ import { Media } from '@/components/ui/media';
 import { EmptyState } from '@/components/shop/empty-state';
 import { QuantityStepper } from './quantity-stepper';
 import { formatPrice } from '@/lib/utils';
+import { useAuthStore } from '@/store/auth-store';
+import { ServerCartView } from './server-cart-view';
 
 /**
  * The guest cart.
@@ -22,12 +24,21 @@ import { formatPrice } from '@/lib/utils';
  * an explicit note rather than reading as a binding quote.
  */
 export function CartView() {
+  const status = useAuthStore((state) => state.status);
   const hydrated = useCartStore((state) => state.hydrated);
   const lines = useCartStore((state) => state.lines);
   const setQuantity = useCartStore((state) => state.setQuantity);
   const remove = useCartStore((state) => state.remove);
 
-  if (!hydrated) return <CartSkeleton />;
+  // Once signed in the basket lives server-side, and that view is the
+  // authoritative one - real prices, real stock. The guest cart below is only
+  // for visitors who have not signed in yet.
+  if (status === 'authenticated') return <ServerCartView />;
+
+  // `unknown` means the session has not been restored yet. Rendering the guest
+  // cart now would show an empty bag to a signed-in customer for a moment and
+  // then swap - so hold the space instead.
+  if (status === 'unknown' || !hydrated) return <CartSkeleton />;
 
   if (lines.length === 0) {
     return (

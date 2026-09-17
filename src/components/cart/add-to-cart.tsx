@@ -4,8 +4,11 @@ import { Check, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { useCartStore } from '@/store/cart-store';
+import { useAddToCart, useQuantityInCart } from '@/hooks/use-add-to-cart';
+import { getErrorMessage } from '@/lib/errors';
+import { useAuthStore } from '@/store/auth-store';
 import { QuantityStepper } from './quantity-stepper';
+import { WishlistButton } from '@/components/product/wishlist-button';
 
 interface AddToCartProps {
   productId: string;
@@ -40,16 +43,18 @@ export function AddToCart({
   const [quantity, setQuantity] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
 
-  const add = useCartStore((state) => state.add);
-  const hydrated = useCartStore((state) => state.hydrated);
-  const inCart = useCartStore((state) =>
-    state.lines.find((line) => line.productId === productId && line.variantId === null),
-  );
+  const addToCart = useAddToCart();
+  const status = useAuthStore((state) => state.status);
+  const alreadyHeld = useQuantityInCart(productId, null);
+
+  // Both carts settle asynchronously - the guest one reads localStorage, the
+  // server one is a fetch - so the held count is only trustworthy once the
+  // session is resolved.
+  const resolved = status !== 'unknown';
 
   const outOfStock = stockQuantity <= 0;
   // Never offer more than exists. If the customer already holds some, the
   // remainder is what is still addable.
-  const alreadyHeld = hydrated ? (inCart?.quantity ?? 0) : 0;
   const maxAddable = Math.max(stockQuantity - alreadyHeld, 0);
 
   useEffect(() => {
@@ -61,11 +66,16 @@ export function AddToCart({
   if (outOfStock) {
     return (
       <div className="mt-7 space-y-3">
-        <div
-          aria-disabled
-          className="flex w-full items-center justify-center gap-2 rounded-md bg-paper-300 px-6 py-3.5 text-sm font-medium text-ink-400 sm:w-auto sm:px-10"
-        >
-          Out of stock
+        <div className="flex flex-wrap items-center gap-3">
+          <div
+            aria-disabled
+            className="flex flex-1 items-center justify-center gap-2 rounded-md bg-paper-300 px-6 py-3.5 text-sm font-medium text-ink-400 sm:flex-none sm:px-10"
+          >
+            Out of stock
+          </div>
+          {/* Saving for later matters most here - this is the customer who
+              cannot buy it today and would otherwise have nothing to do. */}
+          <WishlistButton productId={productId} productName={name} />
         </div>
         <p className="text-sm leading-relaxed text-ink-500">
           We grind to order rather than holding inventory, so this goes out of stock until the next
@@ -79,7 +89,7 @@ export function AddToCart({
     );
   }
 
-  const nothingLeftToAdd = hydrated && maxAddable <= 0;
+  const nothingLeftToAdd = resolved && maxAddable <= 0;
 
   return (
     <div className="mt-7 space-y-3">
@@ -92,15 +102,32 @@ export function AddToCart({
 
         <button
           type="button"
-          disabled={nothingLeftToAdd}
-          onClick={() => {
-            add({ productId, variantId: null, slug, name, price, imageUrl }, quantity);
-            setJustAdded(true);
-            setQuantity(1);
-            toast.success(`${name} added to your bag`, {
-              action: { label: 'View bag', onClick: () => window.location.assign('/cart') },
-            });
-          }}
+          disabled={nothingLeftToAdd || addToCart.isPending}
+          onClick={() =>
+            addToCart.mutate(
+              {
+                line: { productId, variantId: null, slug, name, price, imageUrl },
+                quantity,
+              },
+              {
+                // The toast only fires on success now. It previously fired
+                // unconditionally, which is how it came to promise an item was
+                // in a bag that turned out to be empty.
+                onSuccess: () => {
+                  setJustAdded(true);
+                  setQuantity(1);
+                  toast.success(`${name} added to your bag`, {
+                    action: {
+                      label: 'View bag',
+                      onClick: () => window.location.assign('/cart'),
+                    },
+                  });
+                },
+                onError: (error) =>
+                  toast.error(getErrorMessage(error, 'Could not add that to your bag.')),
+              },
+            )
+          }
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-gold-500 px-6 py-3.5 text-sm font-medium text-ink-900 transition-colors hover:bg-gold-400 disabled:cursor-not-allowed disabled:bg-paper-300 disabled:text-ink-400 sm:flex-none sm:px-10"
         >
           {justAdded ? (
@@ -115,11 +142,13 @@ export function AddToCart({
             </>
           )}
         </button>
+
+        <WishlistButton productId={productId} productName={name} />
       </div>
 
-      {/* Only rendered after hydration - during SSR we do not know what is in
-          the cart, and rendering a guess would flicker on load. */}
-      {hydrated && alreadyHeld > 0 ? (
+      {/* Only once the session is resolved - during SSR we do not know which
+          cart applies, let alone what is in it, and a guess would flicker. */}
+      {resolved && alreadyHeld > 0 ? (
         <p className="text-sm text-ink-500" data-numeric>
           {alreadyHeld} already in your bag.{' '}
           <Link href="/cart" className="text-gold-700 underline underline-offset-2">

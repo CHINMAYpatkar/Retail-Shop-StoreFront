@@ -269,3 +269,113 @@ export interface PublicSettings {
   footer?: FooterSettings;
   [key: string]: unknown;
 }
+
+// ---------------------------------------------------------------------------
+// Customer account
+// ---------------------------------------------------------------------------
+
+export interface CustomerProfile {
+  id: string;
+  name: string | null;
+  email: string;
+  phone: string | null;
+  isVerified: boolean;
+  /** Derived server-side. False until both name and phone are set. */
+  profileComplete: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+/** What `otp/verify` returns. The refresh token is a cookie, not a field. */
+export interface VerifyOtpResult {
+  accessToken: string;
+  isNewCustomer: boolean;
+  profileComplete: boolean;
+}
+
+export interface Address {
+  id: string;
+  /** The "type" - Home, Work, and so on. Free text with presets in the UI. */
+  label: string | null;
+  fullName: string;
+  phone: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  isDefault: boolean;
+}
+
+export interface ServerCartItem {
+  id: string;
+  productId: string;
+  variantId: string | null;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  product: {
+    id: string;
+    name: string;
+    slug: string;
+    price: string;
+    stockQuantity: number;
+    images: ProductImage[];
+  };
+}
+
+export interface ServerCart {
+  items: ServerCartItem[];
+  subtotal: number;
+  itemCount: number;
+}
+
+export type OrderStatus =
+  | 'PLACED'
+  | 'CONFIRMED'
+  | 'PACKED'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCELLED'
+  | 'RETURNED';
+
+export type PaymentStatus =
+  | 'PENDING'
+  | 'PAID'
+  | 'FAILED'
+  | 'REFUNDED'
+  | 'PARTIALLY_REFUNDED';
+
+export interface OrderItem {
+  id: string;
+  productId: string;
+  productName: string;
+  unitPrice: string;
+  quantity: number;
+  totalPrice: string;
+}
+
+export interface CustomerOrder {
+  id: string;
+  orderNumber: string;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  paymentMethod: string;
+  subtotal: string;
+  shippingAmount: string;
+  discountAmount: string;
+  totalAmount: string;
+  createdAt: string;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  items: OrderItem[];
+  address?: Address;
+}
+
+export interface WishlistItem {
+  id: string;
+  productId: string;
+  createdAt: string;
+  product: ProductCard;
+}

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ProductCard as ProductCardType } from '@/types/api';
 import { Media } from '@/components/ui/media';
 import { discountPercent, formatPrice, hasDiscount, text } from '@/lib/utils';
+import { WishlistButton } from './wishlist-button';
 
 /**
  * One product in a grid.
@@ -28,7 +29,13 @@ export function ProductCard({
   const summary = text(product.shortDescription);
 
   return (
-    <article className="group">
+    <article className="group relative">
+      {/* Outside the Link: a button nested in an anchor is invalid markup and
+          makes the whole card impossible to activate predictably. */}
+      <div className="absolute right-2 top-2 z-10">
+        <WishlistButton productId={product.id} productName={product.name} variant="overlay" />
+      </div>
+
       <Link href={`/shop/${product.slug}`} className="block">
         <div className="relative aspect-[4/5] overflow-hidden rounded-lg bg-paper-200">
           <Media
