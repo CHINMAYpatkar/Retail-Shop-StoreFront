@@ -7,7 +7,7 @@ import { Breadcrumbs } from '@/components/product/breadcrumbs';
 import { ProductGallery } from '@/components/product/product-gallery';
 import { ProductSpecs } from '@/components/product/product-specs';
 import { ProductStructuredData } from '@/components/product/product-structured-data';
-import { AddToCartPlaceholder } from '@/components/product/add-to-cart-placeholder';
+import { AddToCart } from '@/components/cart/add-to-cart';
 import { RatingStars } from '@/components/product/rating-stars';
 import { ReviewList } from '@/components/product/review-list';
 import { Reveal } from '@/components/motion';
@@ -69,7 +69,6 @@ export default async function ProductPage({ params }: Params) {
   // indexed as a valid product.
   if (!product) notFound();
 
-  const outOfStock = product.stockQuantity <= 0;
   const discount = discountPercent(product.price, product.compareAtPrice);
   const ingredients = product.ingredients?.map((entry) => entry.ingredient) ?? [];
   const recipes = product.recipes?.map((entry) => entry.recipe) ?? [];
@@ -135,7 +134,14 @@ export default async function ProductPage({ params }: Params) {
             ) : null}
           </div>
 
-          <AddToCartPlaceholder outOfStock={outOfStock} />
+          <AddToCart
+            productId={product.id}
+            slug={product.slug}
+            name={product.name}
+            price={product.price}
+            imageUrl={product.images?.[0]?.url ?? null}
+            stockQuantity={product.stockQuantity}
+          />
           <ProductSpecs product={product} />
         </div>
       </div>
