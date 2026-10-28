@@ -1,4 +1,8 @@
 import type { Config } from 'tailwindcss';
+// An ESM import, not `require`. This file is ESM - it has a top-level `import`
+// and `export default` - so Node loads it through the ESM path, where `require`
+// is not defined. Mixing the two crashed the dev server on first compile.
+import animate from 'tailwindcss-animate';
 
 /**
  * Warm and artisanal — see ADR 0014.
@@ -125,7 +129,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [animate],
 };
 
 export default config;
