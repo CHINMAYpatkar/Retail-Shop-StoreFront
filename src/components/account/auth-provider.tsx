@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { bootstrapAuth } from '@/lib/auth';
@@ -20,13 +20,17 @@ import { useAuthStore } from '@/store/auth-store';
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const status = useAuthStore((state) => state.status);
+  const bootstrapped = useRef(false);
 
   useEffect(() => {
-    if (status === 'unknown') {
-      void bootstrapAuth();
-    }
-  }, [status]);
+    // Guarded as well as coalesced. `refreshAccessToken` already shares one
+    // in-flight request, but running the whole bootstrap twice would still
+    // fire a second `/me` for no reason - and StrictMode runs this twice in
+    // development, which is how the double-refresh bug surfaced.
+    if (bootstrapped.current) return;
+    bootstrapped.current = true;
+    void bootstrapAuth();
+  }, []);
 
   useEffect(() => {
     // Fired when a refresh fails mid-session - the token expired and could not

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, LogOut, MapPin, Package, User } from 'lucide-react';
+import { Heart, LifeBuoy, LogOut, MapPin, Package, User } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,7 @@ const LINKS = [
   { href: '/account/orders', label: 'Orders', Icon: Package },
   { href: '/account/addresses', label: 'Addresses', Icon: MapPin },
   { href: '/account/wishlist', label: 'Wishlist', Icon: Heart },
+  { href: '/account/support', label: 'Support', Icon: LifeBuoy },
 ] as const;
 
 export function AccountNav() {

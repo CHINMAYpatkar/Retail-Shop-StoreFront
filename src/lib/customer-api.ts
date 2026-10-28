@@ -57,12 +57,10 @@ customerApi.interceptors.request.use((config) => {
 });
 
 /**
- * Refreshes the access token using the httpOnly cookie.
- *
- * Returns null rather than throwing when there is no usable session — "not
- * signed in" is a normal state for a storefront, not an error.
+ * The actual network call. Private - every caller must go through
+ * `refreshAccessToken`, which coalesces.
  */
-export async function refreshAccessToken(): Promise<string | null> {
+async function performRefresh(): Promise<string | null> {
   try {
     const { data } = await axios.post<ApiEnvelope<{ accessToken: string }>>(
       `${API_URL}/auth/customer/refresh`,
@@ -78,20 +76,33 @@ export async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
-/**
- * In-flight refresh, shared across concurrent 401s.
- *
- * Without this, three parallel requests that all 401 would fire three refreshes.
- * Because refresh tokens ROTATE, the first would succeed and invalidate the
- * token the other two are using — signing the customer out in the middle of a
- * page load. Coalescing is not an optimisation here; it is required for
- * correctness.
- */
 let refreshInFlight: Promise<string | null> | null = null;
 
-function refreshOnce(): Promise<string | null> {
+/**
+ * Refreshes the access token from the httpOnly cookie, coalescing concurrent
+ * callers onto one request.
+ *
+ * **The coalescing is required for correctness, not performance.** Refresh
+ * tokens ROTATE: using one invalidates it and issues a replacement. So two
+ * refreshes racing means the first succeeds and the second replays a token that
+ * no longer exists, gets a 401, and signs the customer out.
+ *
+ * That is not hypothetical. React StrictMode runs effects twice in development,
+ * so the session bootstrap fired two refreshes on every page load and the
+ * customer was signed straight back out - intermittently, depending on which
+ * won. In production the same race appears whenever two things need a token at
+ * once.
+ *
+ * Which is why this, rather than the raw call, is what is exported: a caller
+ * cannot opt out of the coalescing by accident. The bootstrap originally called
+ * the raw version directly, which is how the bug got in.
+ *
+ * Returns null rather than throwing when there is no usable session - "not
+ * signed in" is a normal state for a storefront, not an error.
+ */
+export function refreshAccessToken(): Promise<string | null> {
   if (!refreshInFlight) {
-    refreshInFlight = refreshAccessToken().finally(() => {
+    refreshInFlight = performRefresh().finally(() => {
       refreshInFlight = null;
     });
   }
@@ -120,7 +131,7 @@ customerApi.interceptors.response.use(
     }
 
     original._retried = true;
-    const token = await refreshOnce();
+    const token = await refreshAccessToken();
 
     if (!token) {
       setAccessToken(null);

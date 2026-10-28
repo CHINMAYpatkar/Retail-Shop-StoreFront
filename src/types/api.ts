@@ -270,6 +270,23 @@ export interface PublicSettings {
   [key: string]: unknown;
 }
 
+/** One step of a recipe. Stored as a JSON array, so nothing here is guaranteed. */
+export interface RecipeStep {
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+}
+
+export interface RecipeDetail extends RecipeSummary {
+  steps: RecipeStep[];
+  ingredients: { ingredient: IngredientSummary }[];
+  products: { product: { id: string; name: string; slug: string } }[];
+}
+
+export interface IngredientDetail extends IngredientSummary {
+  products?: { product: ProductCard }[];
+}
+
 // ---------------------------------------------------------------------------
 // Customer account
 // ---------------------------------------------------------------------------
@@ -331,14 +348,42 @@ export interface ServerCart {
   itemCount: number;
 }
 
+/**
+ * Every value of the backend's `OrderStatus` enum, in order.
+ *
+ * Must stay exhaustive: the badge maps are typed `Record<OrderStatus, ...>`, so
+ * adding a value here produces a compile error anywhere that has not handled
+ * it. Three were missing at first - PROCESSING, OUT_FOR_DELIVERY and REFUNDED -
+ * and an order in any of them rendered the raw enum name to the customer.
+ */
 export type OrderStatus =
   | 'PLACED'
   | 'CONFIRMED'
+  | 'PROCESSING'
   | 'PACKED'
   | 'SHIPPED'
+  | 'OUT_FOR_DELIVERY'
   | 'DELIVERED'
   | 'CANCELLED'
-  | 'RETURNED';
+  | 'RETURNED'
+  | 'REFUNDED';
+
+/**
+ * Statuses a customer may still cancel from.
+ *
+ * Mirrors `CUSTOMER_CANCELLABLE` in `orders.service.ts`. This list was short by
+ * one (PROCESSING), which meant a customer the backend would have let cancel
+ * was shown no way to do it and had to contact the shop instead.
+ *
+ * The server is still the authority - it rejects a cancellation it does not
+ * allow, and the UI surfaces that error - so being wrong here hides a valid
+ * action rather than permitting an invalid one.
+ */
+export const CUSTOMER_CANCELLABLE_STATUSES: readonly OrderStatus[] = [
+  'PLACED',
+  'CONFIRMED',
+  'PROCESSING',
+];
 
 export type PaymentStatus =
   | 'PENDING'
@@ -371,6 +416,29 @@ export interface CustomerOrder {
   cancelReason: string | null;
   items: OrderItem[];
   address?: Address;
+}
+
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+
+export interface TicketMessage {
+  id: string;
+  /** "customer" or "admin" - who wrote it. */
+  senderType: string;
+  senderName: string | null;
+  message: string;
+  createdAt: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  ticketNumber: string;
+  name: string;
+  email: string;
+  subject: string;
+  status: TicketStatus;
+  createdAt: string;
+  updatedAt: string;
+  messages: TicketMessage[];
 }
 
 export interface WishlistItem {

@@ -12,6 +12,9 @@ import type {
   ProductDetail,
   PublicSettings,
   RecipeSummary,
+  RecipeDetail,
+  IngredientDetail,
+  BlogPost,
 } from '@/types/api';
 
 /**
@@ -127,6 +130,35 @@ export async function getRecipes(): Promise<RecipeSummary[]> {
     tags: ['recipes'],
   });
   return recipes ?? [];
+}
+
+export async function getRecipe(slug: string): Promise<RecipeDetail | null> {
+  return getOptional<RecipeDetail>(`recipes/${encodeURIComponent(slug)}`, {
+    revalidate: REVALIDATE.content,
+    tags: ['recipes', `recipe:${slug}`],
+  });
+}
+
+export async function getIngredient(slug: string): Promise<IngredientDetail | null> {
+  return getOptional<IngredientDetail>(`ingredients/${encodeURIComponent(slug)}`, {
+    revalidate: REVALIDATE.content,
+    tags: ['ingredients', `ingredient:${slug}`],
+  });
+}
+
+export async function getBlogPosts(): Promise<BlogPost[]> {
+  const page = await getOptional<Paginated<BlogPost>>('blogs?limit=50', {
+    revalidate: REVALIDATE.content,
+    tags: ['blogs'],
+  });
+  return page?.items ?? [];
+}
+
+export async function getBlogPost(slug: string): Promise<BlogPost | null> {
+  return getOptional<BlogPost>(`blogs/${encodeURIComponent(slug)}`, {
+    revalidate: REVALIDATE.content,
+    tags: ['blogs', `blog:${slug}`],
+  });
 }
 
 export { get, getOptional };

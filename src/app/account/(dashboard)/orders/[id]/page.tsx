@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCancelOrder, useOrder } from '@/hooks/use-account';
 import { OrderStatusBadge } from '@/components/account/order-status-badge';
@@ -11,13 +11,17 @@ import { EmptyState } from '@/components/shop/empty-state';
 import { formatPrice } from '@/lib/utils';
 import { formatOrderDateTime } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
-
-/** Statuses a customer may still cancel from - mirrors the backend's list. */
-const CANCELLABLE = ['PLACED', 'CONFIRMED'];
+import { CUSTOMER_CANCELLABLE_STATUSES } from '@/types/api';
+import { ReviewForm } from '@/components/account/review-form';
 
 export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  // Set by checkout on redirect. Shows the confirmation once, on arrival -
+  // the same page is also the ordinary order detail, reached from the list.
+  const justPlaced = useSearchParams().get('placed') === '1';
+  // Which line the customer is currently reviewing, if any.
+  const [reviewing, setReviewing] = useState<string | null>(null);
   const { data: order, isLoading, isError } = useOrder(params.id);
   const cancel = useCancelOrder();
   const [confirming, setConfirming] = useState(false);
@@ -37,7 +41,7 @@ export default function OrderDetailPage() {
     );
   }
 
-  const canCancel = CANCELLABLE.includes(order.status);
+  const canCancel = CUSTOMER_CANCELLABLE_STATUSES.includes(order.status);
 
   return (
     <div>
@@ -57,6 +61,19 @@ export default function OrderDetailPage() {
         <OrderStatusBadge status={order.status} />
       </div>
 
+      {justPlaced ? (
+        <div className="mt-6 flex items-start gap-3 rounded-lg border border-gold-300 bg-gold-50 p-5">
+          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-gold-700" />
+          <div>
+            <h2 className="font-display text-lg text-ink-900">Thank you — your order is in</h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-ink-600">
+              We have emailed you a confirmation. You will hear from us again when it is on its
+              way. Pay in cash when it arrives.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       {order.status === 'CANCELLED' && order.cancelReason ? (
         <p className="mt-4 rounded-md border-l-2 border-chilli-300 bg-chilli-50 px-4 py-3 text-sm text-chilli-600">
           {order.cancelReason}
@@ -65,18 +82,41 @@ export default function OrderDetailPage() {
 
       <ul className="mt-8 divide-y divide-paper-300 border-y border-paper-300">
         {order.items.map((item) => (
-          <li key={item.id} className="flex items-start justify-between gap-4 py-4">
-            <div className="min-w-0">
-              {/* The snapshot name, not the live product name. If the shop
-                  renames a blend, the order must still say what was bought. */}
-              <p className="text-ink-900">{item.productName}</p>
-              <p className="mt-1 font-data text-xs text-ink-400" data-numeric>
-                {formatPrice(item.unitPrice)} × {item.quantity}
-              </p>
+          <li key={item.id} className="py-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                {/* The snapshot name, not the live product name. If the shop
+                    renames a blend, the order must still say what was bought. */}
+                <p className="text-ink-900">{item.productName}</p>
+                <p className="mt-1 font-data text-xs text-ink-400" data-numeric>
+                  {formatPrice(item.unitPrice)} × {item.quantity}
+                </p>
+
+                {/* Only on a delivered order: that is the one case the backend
+                    will accept a review for, so offering it elsewhere means
+                    offering something that will be refused. */}
+                {order.status === 'DELIVERED' && reviewing !== item.id ? (
+                  <button
+                    type="button"
+                    onClick={() => setReviewing(item.id)}
+                    className="mt-2 text-sm text-gold-700 underline underline-offset-2 transition-colors hover:text-gold-800"
+                  >
+                    Write a review
+                  </button>
+                ) : null}
+              </div>
+              <span className="shrink-0 font-data text-sm text-ink-900" data-numeric>
+                {formatPrice(item.totalPrice)}
+              </span>
             </div>
-            <span className="shrink-0 font-data text-sm text-ink-900" data-numeric>
-              {formatPrice(item.totalPrice)}
-            </span>
+
+            {reviewing === item.id ? (
+              <ReviewForm
+                productId={item.productId}
+                productName={item.productName}
+                onDone={() => setReviewing(null)}
+              />
+            ) : null}
           </li>
         ))}
       </ul>

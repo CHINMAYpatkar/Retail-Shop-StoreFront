@@ -3,7 +3,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { customerApi, unwrap } from '@/lib/customer-api';
 import { useAuthStore } from '@/store/auth-store';
-import type { Address, CustomerOrder, ServerCart, WishlistItem } from '@/types/api';
+import type {
+  Address,
+  CustomerOrder,
+  ServerCart,
+  SupportTicket,
+  WishlistItem,
+} from '@/types/api';
 
 /**
  * Account data.
@@ -26,6 +32,8 @@ export const accountKeys = {
   addresses: ['customer', 'addresses'] as const,
   wishlist: ['customer', 'wishlist'] as const,
   cart: ['customer', 'cart'] as const,
+  tickets: ['customer', 'tickets'] as const,
+  ticket: (id: string) => ['customer', 'tickets', id] as const,
 };
 
 export function useOrders() {
@@ -109,6 +117,40 @@ export function useRemoveFromWishlist() {
     mutationFn: async (productId: string) =>
       customerApi.delete(`/customer/wishlist/${productId}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: accountKeys.wishlist }),
+  });
+}
+
+export function useSupportTickets() {
+  const enabled = useIsAuthenticated();
+  return useQuery({
+    queryKey: accountKeys.tickets,
+    enabled,
+    queryFn: async () =>
+      unwrap<SupportTicket[]>(await customerApi.get('/customer/support/tickets')),
+  });
+}
+
+export function useSupportTicket(id: string) {
+  const enabled = useIsAuthenticated();
+  return useQuery({
+    queryKey: accountKeys.ticket(id),
+    enabled: enabled && Boolean(id),
+    queryFn: async () =>
+      unwrap<SupportTicket>(await customerApi.get(`/customer/support/tickets/${id}`)),
+  });
+}
+
+export function useReplyToTicket(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (message: string) =>
+      customerApi.post(`/customer/support/tickets/${id}/messages`, { message }),
+    onSuccess: () => {
+      // Both the thread and the list change: the list shows the last-updated
+      // time, which a reply moves.
+      void queryClient.invalidateQueries({ queryKey: accountKeys.ticket(id) });
+      void queryClient.invalidateQueries({ queryKey: accountKeys.tickets });
+    },
   });
 }
 
