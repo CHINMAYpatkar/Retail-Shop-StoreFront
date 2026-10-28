@@ -360,13 +360,23 @@ export type OrderStatus =
   | 'PLACED'
   | 'CONFIRMED'
   | 'PROCESSING'
+  | 'AWAITING_STOCK'
   | 'PACKED'
   | 'SHIPPED'
+  | 'PARTIALLY_SHIPPED'
   | 'OUT_FOR_DELIVERY'
   | 'DELIVERED'
   | 'CANCELLED'
   | 'RETURNED'
   | 'REFUNDED';
+
+/**
+ * Where one line of the order has got to.
+ *
+ * Exists because a single status for the whole order stops being true the
+ * moment one line is held back for stock.
+ */
+export type OrderItemStatus = 'PENDING' | 'AWAITING_STOCK' | 'SHIPPED' | 'DELIVERED';
 
 /**
  * Statuses a customer may still cancel from.
@@ -383,10 +393,16 @@ export const CUSTOMER_CANCELLABLE_STATUSES: readonly OrderStatus[] = [
   'PLACED',
   'CONFIRMED',
   'PROCESSING',
+  // A backordered order is the one a customer is MOST likely to want to
+  // cancel - they have just been told part of it is weeks away. The backend
+  // allows it; leaving it out here would hide the one action they came for.
+  'AWAITING_STOCK',
 ];
 
 export type PaymentStatus =
   | 'PENDING'
+  /** One parcel of a split delivery paid for, with the rest still owed. */
+  | 'PARTIALLY_PAID'
   | 'PAID'
   | 'FAILED'
   | 'REFUNDED'
@@ -396,6 +412,10 @@ export interface OrderItem {
   id: string;
   productId: string;
   productName: string;
+  fulfilmentStatus: OrderItemStatus;
+  /** Set only while the line is AWAITING_STOCK; cleared when it comes back. */
+  expectedAvailabilityDate?: string | null;
+  availabilityNote?: string | null;
   unitPrice: string;
   quantity: number;
   totalPrice: string;
@@ -414,8 +434,26 @@ export interface CustomerOrder {
   createdAt: string;
   cancelledAt: string | null;
   cancelReason: string | null;
+  /**
+   * True when the shop is keeping the order together until every line is in
+   * stock; false when the available lines ship first and the rest follow.
+   * Changes what the customer is told, so it is not a detail.
+   */
+  holdForStock: boolean;
   items: OrderItem[];
+  payments?: OrderPayment[];
   address?: Address;
+}
+
+/**
+ * One cash collection. A split delivery produces one per parcel, which is what
+ * lets the order page show what has been paid and what is still to come.
+ */
+export interface OrderPayment {
+  id: string;
+  amount: string;
+  collectedAt: string;
+  note?: string | null;
 }
 
 export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';

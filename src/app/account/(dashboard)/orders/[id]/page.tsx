@@ -6,10 +6,13 @@ import { useState } from 'react';
 import { ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCancelOrder, useOrder } from '@/hooks/use-account';
-import { OrderStatusBadge } from '@/components/account/order-status-badge';
+import {
+  OrderItemStatusBadge,
+  OrderStatusBadge,
+} from '@/components/account/order-status-badge';
 import { EmptyState } from '@/components/shop/empty-state';
 import { formatPrice } from '@/lib/utils';
-import { formatOrderDateTime } from '@/lib/format';
+import { formatOrderDate, formatOrderDateTime } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
 import { CUSTOMER_CANCELLABLE_STATUSES } from '@/types/api';
 import { ReviewForm } from '@/components/account/review-form';
@@ -42,6 +45,7 @@ export default function OrderDetailPage() {
   }
 
   const canCancel = CUSTOMER_CANCELLABLE_STATUSES.includes(order.status);
+  const heldItems = order.items.filter((item) => item.fulfilmentStatus === 'AWAITING_STOCK');
 
   return (
     <div>
@@ -74,6 +78,37 @@ export default function OrderDetailPage() {
         </div>
       ) : null}
 
+      {heldItems.length > 0 ? (
+        <div className="mt-6 rounded-lg border border-turmeric-200 bg-turmeric-50 p-5">
+          <h2 className="font-display text-lg text-ink-900">
+            {heldItems.length === 1
+              ? 'One item is taking a little longer'
+              : 'Some items are taking a little longer'}
+          </h2>
+          <ul className="mt-3 space-y-1.5">
+            {heldItems.map((item) => (
+              <li key={item.id} className="text-sm text-ink-700">
+                <span className="text-ink-900">{item.productName}</span>
+                {item.expectedAvailabilityDate ? (
+                  <> — expected by {formatOrderDate(item.expectedAvailabilityDate)}</>
+                ) : null}
+                {item.availabilityNote ? (
+                  <span className="mt-0.5 block text-xs text-ink-500">{item.availabilityNote}</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-sm leading-relaxed text-ink-600">
+            {/* Lead with what is NOT happening. A customer reading only the
+                first clause should still be reassured. */}
+            Nothing has been cancelled and there is nothing you need to do.{' '}
+            {order.status === 'PARTIALLY_SHIPPED' || !order.holdForStock
+              ? 'The rest of your order is on its way, and these will follow in a second delivery at no extra charge.'
+              : 'We are keeping your order together, so everything will arrive in one delivery.'}
+          </p>
+        </div>
+      ) : null}
+
       {order.status === 'CANCELLED' && order.cancelReason ? (
         <p className="mt-4 rounded-md border-l-2 border-chilli-300 bg-chilli-50 px-4 py-3 text-sm text-chilli-600">
           {order.cancelReason}
@@ -87,10 +122,18 @@ export default function OrderDetailPage() {
               <div className="min-w-0">
                 {/* The snapshot name, not the live product name. If the shop
                     renames a blend, the order must still say what was bought. */}
-                <p className="text-ink-900">{item.productName}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-ink-900">{item.productName}</p>
+                  <OrderItemStatusBadge status={item.fulfilmentStatus} />
+                </div>
                 <p className="mt-1 font-data text-xs text-ink-400" data-numeric>
                   {formatPrice(item.unitPrice)} × {item.quantity}
                 </p>
+                {item.fulfilmentStatus === 'AWAITING_STOCK' && item.expectedAvailabilityDate ? (
+                  <p className="mt-1 text-xs text-turmeric-600">
+                    Expected by {formatOrderDate(item.expectedAvailabilityDate)}
+                  </p>
+                ) : null}
 
                 {/* Only on a delivered order: that is the one case the backend
                     will accept a review for, so offering it elsewhere means
